@@ -1,0 +1,14 @@
+{
+  "version": "0.1.0",
+  "init": [
+    {
+      "sh": "python3 -m venv .venv"
+    },
+    {
+      "py": "pip install --upgrade pip setuptools"
+    },
+    {
+      "py": "pip list -v --no-index"
+    }
+  ]
+}

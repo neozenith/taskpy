@@ -1,83 +1,50 @@
 #!/usr/bin/env python3
 # Standard Library
-import json
 import os
 import sys
+import shlex
 from subprocess import run
 
-__VERSION__ = "0.1.0"
-
-default_scripts = {
-    "version": __VERSION__,
-    "init": [
-        {"sh":"python3 -m venv .venv"},
-        {"py":"pip install --upgrade pip setuptools"},
-        {"py":"pip list -v --no-index"}
-    ]
-    # TODO: Implement default tooling config generation
-    #  "lint": [
-    #      {"sh": "black ."},
-    #      {"sh": "flake8 ."},
-    #      {"sh": "isort ."},
-    #  ],
-    #  "test": [
-    #      {"py": "pytest"}
-    #  ]
-}
-
-def _check_config():
-    if not os.path.isfile("tasks.json"):
-        with open("tasks.json", "w") as f:
-            f.write(json.dumps(default_scripts, indent=2))
-
-def _load_config():
-    _check_config()
-    with open("tasks.json", "r") as f:
-        config = json.load(f)
-    return config
-
-def _shcmd(command, args=[]):
-    return run(command.split(" ") + args)
+# NOTE:
+# 1. python ./tasks.py
+#    - Bootstrap venv and install invoke and create dummy decorator in interim
+# 2. invoke <name of task>
+#    - This should successfully import invoke and task decorator
+try:
+    from invoke import task
+except ImportError:
+    task = lambda x: x
 
 
-def _pycmd(command, args=[]):
-    py3 = ".venv/bin/python3"
-    return run([py3, "-m"] + command.split(" ") + args)
-
-def _run_task(task, steps, args):
-    if task == "version":
-        print(steps)
-        return
-
-    return [
-        _run_step(step, args)
-        for step in steps
-    ]
-
-def _run_step(step, args):
-    for step_type, script in step.items():
-        if step_type == "sh":
-            return _shcmd(script, args)
-        elif step_type == "py":
-            return _pycmd(script, args)
-        else:
-            raise ValueError(f"Unknown task step type {step_type} for script {script}")
+@task
+def lint(c):
+    print("lint task")
 
 
-def _exit_handler(status):
-    statuses = status if type(status) == list else [status]
-    bad_statuses = [s for s in statuses if hasattr(s, 'returncode') and s.returncode != 0]
-    if bad_statuses:
-        sys.exit(bad_statuses)
+def _shcmd(command, args=[], **kwargs):
+    if "shell" in kwargs and kwargs["shell"]:
+        return run(command, **kwargs)
+    else:
+        cmd_parts = command if type(command) == list else shlex.split(command)
+        cmd_parts = cmd_parts + args
+        return run(cmd_parts + args, **kwargs)
 
 
 if __name__ == "__main__":
-    tasks = _load_config()
 
-    if len(sys.argv) >= 2 and sys.argv[1] in tasks.keys():
-        task = sys.argv[1]
-        args = sys.argv[2:]
-        steps = tasks[task]
-        _exit_handler(_run_task(task, steps, args))
+    if len(sys.argv) >= 2 and sys.argv[1] in ["init"]:
+        _shcmd("rm -rfv .venv")
+        _shcmd("python3 -m venv .venv")
+        _shcmd(".venv/bin/python3 -m pip install --upgrade pip")
+
+        if os.path.isfile("requirements.txt"):
+            _shcmd(".venv/bin/python3 -m pip install --upgrade -r requirements.txt")
+
+        # TODO: Bootstrap black, flake8, isort config files
+        if os.path.isfile("requirements-dev.txt"):
+            _shcmd(".venv/bin/python3 -m pip install --upgrade -r requirements-dev.txt")
     else:
-        print(f"Must provide a task from the following: {list(tasks.keys())}")
+        print(f"This script should be run as:\n\n./tasks.py init\n\n")
+        print("This will self bootstrap a virtual environment but then use:\n\n")
+        print(". ./.venv/bin/activate")
+        print("invoke --list")
