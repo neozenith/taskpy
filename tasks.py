@@ -68,7 +68,7 @@ def lint(c):
     c.run("flake8 .")
 
 
-@task
+@task(pre=[lint])
 def test(c):
     c.run("python3 -m pytest")
 
