@@ -10,6 +10,16 @@ tasks.py is a standalone script runner to automate init, lint, test, start, buil
 python3 -c 'from urllib.request import urlretrieve as wget; wget("https://raw.githubusercontent.com/neozenith/taskpy/main/tasks.py", "tasks.py")'
 chmod +x tasks.py
 
-# Setup virtual env and default tasks.json file
+# Setup virtual env and default deps and config
 ./tasks.py init
+
+. ./.venv/bin/activate
+
+invoke --list
+
+Available tasks:
+
+  format
+  lint
+  test
 ```
